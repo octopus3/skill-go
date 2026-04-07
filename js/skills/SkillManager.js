@@ -33,9 +33,10 @@ export class SkillManager {
     this.dyeFirst = null;
     /** @type {{ player: number, capturedColor: number, count: number } | null} */
     this.mutualPending = null;
-    /** @type {boolean} */
-    this.troubleNextBlack = false;
-    this.troubleNextWhite = false;
+    /** 麻烦制造者：先下对方色一子，再下本家一子，才换手 */
+    this.troublePlayer = null;
+    /** 0 未激活；1 下一手须为对方色；2 下一手须为本家色 */
+    this.troubleStage = 0;
   }
 
   getSkillId(player) {
@@ -51,8 +52,7 @@ export class SkillManager {
     if (!id || id === "mutual") return false;
     if (this.uiMode !== "normal") return false;
     if (this.feidaoMovesLeft > 0) return false;
-    if (player === PLAYER_BLACK && this.troubleNextBlack) return false;
-    if (player === PLAYER_WHITE && this.troubleNextWhite) return false;
+    if (this.troublePlayer === player && this.troubleStage > 0) return false;
     return (this.charges[player] ?? 0) > 0;
   }
 
