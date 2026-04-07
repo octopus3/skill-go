@@ -36,7 +36,7 @@ export const SKILL_CATALOG = [
     id: "trouble",
     name: "麻烦制造者",
     charges: 5,
-    desc: "主动：下一次落子使用对方棋子颜色，落完恢复。",
+    desc: "主动：第一手落对方色，第二手落本家色，然后换手。",
   },
 ];
 

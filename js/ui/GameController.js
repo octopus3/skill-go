@@ -118,8 +118,8 @@ export class GameController {
       sMutual: this.skills.mutualPending
         ? { ...this.skills.mutualPending }
         : null,
-      sTBlack: this.skills.troubleNextBlack,
-      sTWhite: this.skills.troubleNextWhite,
+      sTroublePlayer: this.skills.troublePlayer,
+      sTroubleStage: this.skills.troubleStage,
     };
   }
 
@@ -139,8 +139,9 @@ export class GameController {
     this.skills.feidaoMovesLeft = s.sFeidao;
     this.skills.dyeFirst = s.sDyeFirst;
     this.skills.mutualPending = s.sMutual ? { ...s.sMutual } : null;
-    this.skills.troubleNextBlack = s.sTBlack;
-    this.skills.troubleNextWhite = s.sTWhite;
+    this.skills.troublePlayer =
+      s.sTroublePlayer !== undefined ? s.sTroublePlayer : null;
+    this.skills.troubleStage = s.sTroubleStage ?? 0;
   }
 
   _pushHistory() {
@@ -207,7 +208,6 @@ export class GameController {
   }
 
   _finishMoveTurnLogic(movingPlayer) {
-    this.skills.clearTroubleAfterMove(movingPlayer);
     if (this.skills.feidaoMovesLeft > 0) {
       this.skills.feidaoMovesLeft--;
       if (this.skills.feidaoMovesLeft > 0) {
@@ -215,6 +215,14 @@ export class GameController {
         this._pushHint(`飞刀：剩余连下 ${this.skills.feidaoMovesLeft} 手`);
         return;
       }
+    }
+    // 同归于尽等中断结束后：麻烦制造者第一手已下完，仍须再下本家一子
+    if (
+      this.skills.troublePlayer === movingPlayer &&
+      this.skills.troubleStage === 2
+    ) {
+      this._pushHint("麻烦制造者：请再下本家一子");
+      return;
     }
     this.currentPlayer = opponentPlayer(movingPlayer);
     this.roundIndex++;
@@ -225,10 +233,15 @@ export class GameController {
    * 落子成功后：提子与同归于尽、再结算回合/飞刀
    */
   _afterStonePlaced(movingPlayer, captured) {
+    const inTrouble = this.skills.troublePlayer === movingPlayer;
+    const troubleStageBefore = inTrouble ? this.skills.troubleStage : 0;
+
     if (captured.length) {
       const victim = colorToPlayer(captured[0].color);
       const pending = this.skills.onStonesCaptured(victim, captured);
       if (pending) {
+        if (troubleStageBefore === 1) this.skills.troubleStage = 2;
+        else if (troubleStageBefore === 2) this.skills.clearTrouble();
         this.mutualInterrupt = { movingPlayer };
         this.currentPlayer = victim;
         this._pushHint(
@@ -239,6 +252,19 @@ export class GameController {
         return;
       }
     }
+
+    if (troubleStageBefore === 1) {
+      this.skills.troubleStage = 2;
+      this._pushHint("麻烦制造者：请再下本家一子");
+      this._draw();
+      this._updatePanels();
+      return;
+    }
+
+    if (troubleStageBefore === 2) {
+      this.skills.clearTrouble();
+    }
+
     this._finishMoveTurnLogic(movingPlayer);
     this._draw();
     this._updatePanels();
@@ -440,7 +466,9 @@ export class GameController {
     else if (r.mode === "ban") this._pushHint("禁手：点击空位标记对手禁区");
     else if (r.mode === "feidao") this._pushHint("飞刀：请连下 3 手");
     else if (r.mode === "trouble")
-      this._pushHint("麻烦制造者：下一手将下对方颜色的子");
+      this._pushHint(
+        "麻烦制造者：第一手为对方色，第二手为本家色，然后换手"
+      );
     this._updatePanels();
     this._draw();
   }

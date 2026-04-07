@@ -82,8 +82,8 @@ export class SkillManager {
     }
     if (id === "trouble") {
       this.uiMode = "normal";
-      if (player === PLAYER_BLACK) this.troubleNextBlack = true;
-      else this.troubleNextWhite = true;
+      this.troublePlayer = player;
+      this.troubleStage = 1;
       this.charges[player]--;
       return { ok: true, mode: "trouble" };
     }
@@ -103,17 +103,17 @@ export class SkillManager {
     return false;
   }
 
-  /** 落子颜色：考虑麻烦制造者 */
+  /** 落子颜色：考虑麻烦制造者（阶段1对方色，阶段2本家色） */
   stoneColorForMove(player) {
     const my = playerToColor(player);
-    if (player === PLAYER_BLACK && this.troubleNextBlack) return opponentColor(my);
-    if (player === PLAYER_WHITE && this.troubleNextWhite) return opponentColor(my);
+    if (this.troublePlayer !== player || this.troubleStage <= 0) return my;
+    if (this.troubleStage === 1) return opponentColor(my);
     return my;
   }
 
-  clearTroubleAfterMove(player) {
-    if (player === PLAYER_BLACK) this.troubleNextBlack = false;
-    if (player === PLAYER_WHITE) this.troubleNextWhite = false;
+  clearTrouble() {
+    this.troublePlayer = null;
+    this.troubleStage = 0;
   }
 
   /** 同归于尽：被提子方触发 */
